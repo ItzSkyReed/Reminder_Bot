@@ -7,7 +7,6 @@ from ReminderTime import ReminderTime
 
 
 class Reminder:
-
     def __init__(self, user_id: int, channel_id: int, time: str, name: str, description: str | None,
                  rem_type: Literal['Daily','Date'], timezone: Timezone, link: str = None, file: bytes | None = None,
                  file_name: str = None, private: bool = False):

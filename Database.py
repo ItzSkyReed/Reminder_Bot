@@ -29,7 +29,7 @@ def connection(method):
     return wrapper
 
 
-class UserBD(Base):
+class UserDB(Base):
     __tablename__ = "Users"
 
     # Используем discord_id как primary key
@@ -49,14 +49,14 @@ class UserBD(Base):
     @connection
     async def get_user_timezone(cls, discord_id: int, session: AsyncSession) -> "TimezoneBD | None":
         result = await session.execute(
-            select(TimezoneBD).join(cls, cls.timezone == TimezoneBD.id).filter(cls.discord_id == discord_id)
+            select(TimezoneDB).join(cls, cls.timezone == TimezoneDB.id).filter(cls.discord_id == discord_id)
         )
         return result.scalars().first()
 
     @classmethod
     @connection
     async def update_user_timezone(cls, discord_id: int, new_timezone: str, session: AsyncSession) -> None:
-        subquery = select(TimezoneBD.id).filter(TimezoneBD.tz_name == new_timezone).scalar_subquery()
+        subquery = select(TimezoneDB.id).filter(TimezoneDB.tz_name == new_timezone).scalar_subquery()
         await session.execute(
             update(cls)
             .where(cls.discord_id == discord_id)
@@ -65,7 +65,7 @@ class UserBD(Base):
         await session.commit()
 
 
-class TimezoneBD(Base):
+class TimezoneDB(Base):
     __tablename__ = "Timezone"
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
@@ -74,17 +74,17 @@ class TimezoneBD(Base):
     @classmethod
     @connection
     async def insert_timezones(cls, session: AsyncSession):
-        stmt = select(TimezoneBD).limit(1)
+        stmt = select(cls).limit(1)
         result = await session.execute(stmt)
         existing_timezone = result.scalar()
         if existing_timezone:
             return
-        timezones = [TimezoneBD(tz_name=name) for name in UTC_ZONES.keys()]
+        timezones = [cls(tz_name=name) for name in UTC_ZONES.keys()]
         session.add_all(timezones)
         await session.commit()
 
 
-class RemindersBD(Base):
+class RemindersDB(Base):
     __tablename__ = "Reminders"
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False, autoincrement=True)
@@ -126,7 +126,7 @@ class RemindersBD(Base):
     @classmethod
     @connection
     async def add_reminder(cls, reminder: Reminder, session: AsyncSession):
-        user_subquery = select(UserBD.discord_id).where(UserBD.discord_id == reminder.user_id).scalar_subquery()
+        user_subquery = select(UserDB.discord_id).where(UserDB.discord_id == reminder.user_id).scalar_subquery()
         insert_stmt = insert(cls).values(
             user_id=user_subquery,
             name=reminder.name,
@@ -226,7 +226,7 @@ class RemindersBD(Base):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Вставляем временные зоны, если их ещё нет в базе
-        await TimezoneBD.insert_timezones()
+        # Insert time zones if they are not yet in the database
+        await TimezoneDB.insert_timezones()
 
 asyncio.run(init_db())

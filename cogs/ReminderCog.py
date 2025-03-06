@@ -111,12 +111,12 @@ class ReminderCog(commands.Cog):
             file_data = None
             file_name = None
 
-        await Database.UserBD.create_user_if_not_exists(ctx.user.id)
+        await Database.UserDB.create_user_if_not_exists(ctx.user.id)
 
-        if await Database.RemindersBD.get_user_reminders_count(ctx.user.id) == 50:
+        if await Database.RemindersDB.get_user_reminders_count(ctx.user.id) == 50:
             return await self._send_error(ctx, "The limit for reminders is 50. Please delete some reminders to create a new one.")
 
-        utc_zone = (await Database.UserBD.get_user_timezone(ctx.user.id)).tz_name
+        utc_zone = (await Database.UserDB.get_user_timezone(ctx.user.id)).tz_name
         timezone = Timezone(UTC_ZONES[utc_zone])
 
         current_time_str = f"Your current time: {pendulum.now(timezone).format("HH:mm")}; Time zone: {utc_zone}"
@@ -138,7 +138,7 @@ class ReminderCog(commands.Cog):
         except InvalidTimeFormatException:
             return await self._send_error(ctx, "The specified time format cannot be parsed")
 
-        await Database.RemindersBD.add_reminder(reminder)
+        await Database.RemindersDB.add_reminder(reminder)
 
         embed = discord.Embed(
             title=f"Reminder \"{name}\" created!",
@@ -162,7 +162,7 @@ class ReminderCog(commands.Cog):
         description="Edit or view active reminders.",
     )
     async def edit_cmd(self, ctx: discord.ApplicationContext):
-        reminders = await Database.RemindersBD.get_user_reminders_without_file(ctx.user.id)
+        reminders = await Database.RemindersDB.get_user_reminders_without_file(ctx.user.id)
         if not reminders:
             return await self._send_error(ctx, "❌ You don't have any reminders.")
 

@@ -23,15 +23,15 @@ class Dispatcher:
     @classmethod
     async def send_reminders(cls):
         reminders = []
-        reminders.extend(await Database.RemindersBD.get_due_daily())
-        reminders.extend(await Database.RemindersBD.get_due_and_delete_date())
+        reminders.extend(await Database.RemindersDB.get_due_daily())
+        reminders.extend(await Database.RemindersDB.get_due_and_delete_date())
 
         if reminders:
             for reminder in reminders:
                 await cls.send_reminder_message(reminder)
 
     @classmethod
-    async def send_reminder_message(cls, reminder: Database.RemindersBD):
+    async def send_reminder_message(cls, reminder: Database.RemindersDB):
         embed = (discord.Embed(
             title=f'Reminder: "{reminder.name}"',
             color=REMINDER_MESSAGE_COLOR,

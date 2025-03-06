@@ -86,8 +86,8 @@ class ReminderTime:
         return time
 
     def _parse_timer_format(self, time_str: str, timezone: Timezone) -> DateTime | None:
-        __weeks = 0
-        __days = 0
+        weeks = 0
+        days = 0
         hours = 0
         minutes = 0
         seconds = 0
@@ -97,17 +97,17 @@ class ReminderTime:
             if matches:
                 total = sum(map(int, matches))
                 if key == 'weeks':
-                    __weeks += total
+                    weeks += total
                 elif key == 'days':
-                    __days += total
+                    days += total
                 elif key == 'hours':
                     hours += total
                 elif key == 'minutes':
                     minutes += total
                 elif key == 'seconds':
-                    seconds += total
+                    seconds += total    
 
-        days = __weeks * 7 + __days
+        days = weeks * 7 + days
         try:
             time = now('UTC').in_tz(timezone).add(days=days, hours=hours, minutes=minutes, seconds=seconds).in_tz("UTC")
         except OverflowError:

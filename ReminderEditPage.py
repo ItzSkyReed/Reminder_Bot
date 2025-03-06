@@ -20,7 +20,7 @@ class EditErrorEmbed(Embed):
 
 
 class ReminderEditEmbed(Embed):
-    def __init__(self, reminder: Database.RemindersBD, embed_type: Literal["short", "full"], **kwargs):
+    def __init__(self, reminder: Database.RemindersDB, embed_type: Literal["short", "full"], **kwargs):
         super().__init__(**kwargs)
         self._reminder_id = reminder.id
         self.title = f"Reminder: {reminder.name}"
@@ -57,7 +57,7 @@ class ReminderEditEmbed(Embed):
 
 
 class EditNameModal(Modal):
-    def __init__(self, reminder: Database.RemindersBD):
+    def __init__(self, reminder: Database.RemindersDB):
         super().__init__(title="Edit Reminder Name", timeout=180)
         self.add_item(InputText(label="New Name", placeholder="Enter new reminder name", max_length=100, min_length=3))
         self.reminder = reminder
@@ -74,7 +74,7 @@ class EditNameModal(Modal):
 
 
 class EditDescriptionModal(Modal):
-    def __init__(self, reminder: Database.RemindersBD):
+    def __init__(self, reminder: Database.RemindersDB):
         super().__init__(title="Edit Reminder Description", timeout=300)
         self.add_item(InputText(label="New description", placeholder="Enter new reminder description", max_length=1000, style=discord.InputTextStyle.multiline, required=False))
         self.reminder = reminder
@@ -91,7 +91,7 @@ class EditDescriptionModal(Modal):
 
 
 class EditLinkModal(Modal):
-    def __init__(self, reminder: Database.RemindersBD):
+    def __init__(self, reminder: Database.RemindersDB):
         super().__init__(title="Edit Reminder link", timeout=180)
         self.add_item(InputText(label="New link", placeholder="Enter new reminder link", max_length=1000, style=discord.InputTextStyle.multiline, required=False))
         self.reminder = reminder
@@ -110,7 +110,7 @@ class EditLinkModal(Modal):
 
 
 class EditTimeModal(Modal):
-    def __init__(self, reminder: Database.RemindersBD):
+    def __init__(self, reminder: Database.RemindersDB):
         super().__init__(title="Edit Reminder Time", timeout=300)
         self.reminder = reminder
         self.add_item(InputText(label="New time", placeholder="Enter new reminder time", max_length=100, min_length=2))
@@ -125,7 +125,7 @@ class EditTimeModal(Modal):
                 embed=EditErrorEmbed(message=f"Reminder type: {temp_new_type} is incorrect, possible types: \"Daily\", \"Date\""), ephemeral=True)
         else:
             new_type = temp_new_type
-        tz = await Database.UserBD.get_user_timezone(self.reminder.user_id)
+        tz = await Database.UserDB.get_user_timezone(self.reminder.user_id)
         try:
             time = ReminderTime(self.children[0].value, rem_type=new_type, timezone=Timezone(UTC_ZONES[tz.tz_name]), minimal_minutes_from_now=10)
 
@@ -153,7 +153,7 @@ class EditTimeModal(Modal):
 
 
 class ReminderEditView(View):
-    def __init__(self, reminder: Database.RemindersBD):
+    def __init__(self, reminder: Database.RemindersDB):
         super().__init__(disable_on_timeout=True)
         self.reminder = reminder
 
@@ -235,7 +235,7 @@ class ReminderListView(View):
     async def show_reminder_details(interaction: discord.Interaction, reminder_id: int):
         await interaction.response.defer()
 
-        reminder = await Database.RemindersBD.get_reminder_by_id(reminder_id)
+        reminder = await Database.RemindersDB.get_reminder_by_id(reminder_id)
         view = ReminderEditView(reminder)
         embed = ReminderEditEmbed(reminder=reminder, embed_type="full")
 

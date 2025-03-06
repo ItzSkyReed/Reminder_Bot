@@ -29,8 +29,8 @@ class TimezoneCog(commands.Cog):
                            timezone: str,
                            ):
 
-        await Database.UserBD.create_user_if_not_exists(ctx.user.id)
-        await Database.UserBD.update_user_timezone(ctx.user.id, timezone)
+        await Database.UserDB.create_user_if_not_exists(ctx.user.id)
+        await Database.UserDB.update_user_timezone(ctx.user.id, timezone)
 
         embed = discord.Embed(
             title="Your timezone has been changed",
