@@ -8,7 +8,7 @@ from pendulum import Timezone
 
 import Database
 from ReminderTime import ReminderTime, TimeInPastException, ExcessiveFutureTimeException, InvalidReminderTypeException, InvalidTimeFormatException
-from constants import REMINDER_MESSAGE_COLOR, FILE_ICON, EMBED_IMAGE_TYPES, ERROR_MESSAGE_COLOR, UTC_ZONES
+from constants import FILE_ICON, EMBED_IMAGE_TYPES, ERROR_MESSAGE_COLOR, UTC_ZONES, INFO_MESSAGE_COLOR, SUCCESS_MESSAGE_COLOR
 
 
 class EditErrorEmbed(Embed):
@@ -24,7 +24,7 @@ class ReminderEditEmbed(Embed):
         super().__init__(**kwargs)
         self._reminder_id = reminder.id
         self.title = f"Reminder: {reminder.name}"
-        self.color = REMINDER_MESSAGE_COLOR
+        self.color = INFO_MESSAGE_COLOR
 
         if reminder.description is not None:
             if embed_type == "short" and len(reminder.description) > 140:
@@ -136,7 +136,7 @@ class EditTimeModal(Modal):
             return await interaction.response.send_message(embed=EditErrorEmbed("The maximum reminder duration is 2 years."), ephemeral=True)
 
         except InvalidReminderTypeException:
-            return await interaction.response.send_message(embed=EditErrorEmbed("\"Daily\" reminder type can be used only with HH:MM time format"), ephemeral=True)
+            return await interaction.response.send_message(embed=EditErrorEmbed("\"Daily\" reminder type can not be used with \"Full Date\" time format"), ephemeral=True)
 
         except InvalidTimeFormatException:
             return await interaction.response.send_message(embed=EditErrorEmbed("The specified time format cannot be parsed"), ephemeral=True)
@@ -198,7 +198,8 @@ class ReminderEditView(View):
     async def delete_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         name = self.reminder.name
         await self.reminder.delete()
-        await interaction.response.edit_message(embed=EditErrorEmbed(error="Success", message=f"Reminder \"{name}\" has been deleted."), view=None)
+        embed = Embed(title="Success", description=f"Reminder \"{name}\" has been deleted.", color=SUCCESS_MESSAGE_COLOR)
+        await interaction.response.edit_message(embed=embed, view=None)
 
 
 class ReminderListView(View):

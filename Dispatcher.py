@@ -7,6 +7,7 @@ import pendulum
 
 import Database
 import constants
+from common import calculate_timestamp_for_discord_footer
 
 from constants import REMINDER_MESSAGE_COLOR, DISPATCHER_PERIOD, EMBED_IMAGE_TYPES
 
@@ -60,11 +61,7 @@ class Dispatcher:
         else:
             view = None
 
-        if reminder.type == "Daily":
-            timestamp = pendulum.now("UTC").replace(hour=reminder.timestamp // 3600, minute = reminder.timestamp // 60 % 60, second=reminder.timestamp % 60).timestamp()
-            embed.timestamp = datetime.fromtimestamp(timestamp)
-        else:
-            embed.timestamp = datetime.fromtimestamp(reminder.timestamp)
+        embed.timestamp = calculate_timestamp_for_discord_footer(reminder.timestamp, reminder_type=reminder.type)
 
 
         content = f"<@{reminder.user_id}>" if not isinstance(recipient, discord.DMChannel) else None

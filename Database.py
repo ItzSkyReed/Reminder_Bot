@@ -36,7 +36,7 @@ class UserDB(Base):
     discord_id = Column(Integer, unique=True, primary_key=True, nullable=False, autoincrement=False)
     timezone = Column(Integer, ForeignKey("Timezone.id", onupdate="CASCADE", ondelete="SET NULL"), nullable=False, default=1)
 
-    tz_relation = relationship("TimezoneBD", backref="users")
+    tz_relation = relationship("TimezoneDB", backref="users")
 
     @classmethod
     @connection
@@ -100,7 +100,7 @@ class RemindersDB(Base):
     private = Column(Boolean, nullable=False, default=False)
     link = Column(String)
 
-    user = relationship("UserBD", backref="reminders")
+    user = relationship("UserDB", backref="reminders")
 
     __table_args__ = (Index('ix_reminders_timestamp_type', 'timestamp', 'type'),)
 

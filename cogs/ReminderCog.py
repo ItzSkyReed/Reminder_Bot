@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 import discord
@@ -20,14 +21,15 @@ class ReminderCog(commands.Cog):
         self.bot = bot
 
     @staticmethod
-    async def _send_error(ctx, description: str, time_footer_str: str | None = None):
+    async def _send_error(ctx, description: str, time_footer: bool = False):
         embed = discord.Embed(
             title="An error occurred while creating the reminder",
             description=description,
             color=constants.ERROR_MESSAGE_COLOR
         )
-        if time_footer_str is not None:
-            embed.set_footer(text=time_footer_str, icon_url=constants.CLOCK_ICON)
+        if time_footer:
+            embed.set_footer(text='\u200b', icon_url=constants.CLOCK_ICON)
+            embed.timestamp = datetime.fromtimestamp(pendulum.now("UTC").timestamp())
         await ctx.response.send_message(embed=embed, ephemeral=True)
 
     @reminder_group.command(
@@ -119,24 +121,22 @@ class ReminderCog(commands.Cog):
         utc_zone = (await Database.UserDB.get_user_timezone(ctx.user.id)).tz_name
         timezone = Timezone(UTC_ZONES[utc_zone])
 
-        current_time_str = f"Your current time: {pendulum.now(timezone).format("HH:mm")}; Time zone: {utc_zone}"
-
         try:
             reminder = Reminder(user_id=ctx.user.id, channel_id=ctx.channel_id, name=name, time=time, description=description,
                                 timezone=timezone, rem_type=rem_type, file=file_data, file_name=file_name, private=is_private, link=link)
 
 
         except TimeInPastException:
-            return await self._send_error(ctx, "The specified time is in the past", current_time_str)
+            return await self._send_error(ctx, "The specified time is in the past", True)
 
         except ExcessiveFutureTimeException:
-            return await self._send_error(ctx, "The maximum reminder duration is 2 years.")
+            return await self._send_error(ctx, "The maximum reminder duration is 2 years.", True)
 
         except InvalidReminderTypeException:
-            return await self._send_error(ctx, "\"Daily\" reminder type can be used only with HH:MM time format")
+            return await self._send_error(ctx, "\"Daily\" reminder type can not be used with \"Full Date\" time format", True)
 
         except InvalidTimeFormatException:
-            return await self._send_error(ctx, "The specified time format cannot be parsed")
+            return await self._send_error(ctx, "The specified time format cannot be parsed", True)
 
         await Database.RemindersDB.add_reminder(reminder)
 
@@ -154,6 +154,7 @@ class ReminderCog(commands.Cog):
 
         embed.add_field(name="", value=description, inline=False)
         embed.set_footer(text=footer, icon_url=constants.CLOCK_ICON)
+        embed.timestamp = datetime.fromtimestamp(pendulum.now("UTC").timestamp())
 
         return await ctx.response.send_message(embed=embed, ephemeral=is_private)
 
@@ -164,7 +165,7 @@ class ReminderCog(commands.Cog):
     async def edit_cmd(self, ctx: discord.ApplicationContext):
         reminders = await Database.RemindersDB.get_user_reminders_without_file(ctx.user.id)
         if not reminders:
-            return await self._send_error(ctx, "❌ You don't have any reminders.")
+            return await self._send_error(ctx, "❌ You don't have any reminders.", True)
 
         reminder_embeds = []
         for reminder in reminders:
