@@ -11,6 +11,7 @@ import constants
 from Reminder import Reminder
 from ReminderEditPage import ReminderEditEmbed, ReminderListView
 from ReminderTime import TimeInPastException, ExcessiveFutureTimeException, InvalidReminderTypeException, InvalidTimeFormatException
+from common import can_user_tag_role
 from constants import UTC_ZONES, MAX_FILE_SIZE, SUCCESS_MESSAGE_COLOR
 
 
@@ -86,6 +87,12 @@ class ReminderCog(commands.Cog):
         required=False,
         max_length=1000
     )
+    @discord.option(
+        name="mention_role",
+        input_type=discord.Role,
+        description="The role mentioned in the reminder; if none, the author will be mentioned. Does not work in DMs.",
+        required=False
+    )
     async def create_cmd(self,
                          ctx: discord.ApplicationContext,
                          name: str,
@@ -94,14 +101,20 @@ class ReminderCog(commands.Cog):
                          link: str,
                          description: str,
                          file: discord.Attachment,
-                         private: str
+                         private: str,
+                         mention_role: discord.Role
                          ):
 
-        is_private: bool = private == "Yes"
+        is_private: bool = private == "Yes" or isinstance(ctx.channel, discord.DMChannel)
+
+        if mention_role and is_private:
+            return await self._send_error(ctx, "A mention of the role cannot be added to a private message.")
+
+        if mention_role and not can_user_tag_role(mention_role.mentionable, ctx.user.guild_permissions):
+            return await self._send_error(ctx, "You can't create a reminder mentioning this role because you lack the necessary permissions.")
 
         if link is not None and not link.startswith("https://"):
             return await self._send_error(ctx, "The link should start with \"https://\"")
-
 
         if file is not None:
             if file.size >= MAX_FILE_SIZE:
@@ -123,8 +136,9 @@ class ReminderCog(commands.Cog):
 
         try:
             reminder = Reminder(user_id=ctx.user.id, channel_id=ctx.channel_id, name=name, time=time, description=description,
-                                timezone=timezone, rem_type=rem_type, file=file_data, file_name=file_name, private=is_private, link=link)
-
+                                timezone=timezone, rem_type=rem_type, file=file_data, file_name=file_name, private=is_private,
+                                link=link, mention_role=mention_role.id if mention_role else None)
+            print(reminder.mention_role)
 
         except TimeInPastException:
             return await self._send_error(ctx, "The specified time is in the past", True)
@@ -174,7 +188,7 @@ class ReminderCog(commands.Cog):
             reminder_embeds.append(embed)
         view = ReminderListView(reminder_embeds=reminder_embeds)
 
-        await ctx.response.send_message(content="### Choose reminder to edit",embeds=view.embeds[:view.per_page], view=view, ephemeral=True)
+        await ctx.response.send_message(content="### Choose reminder to edit", embeds=view.embeds[:view.per_page], view=view, ephemeral=True)
 
 
 def setup(bot: commands.Bot):

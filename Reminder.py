@@ -9,7 +9,7 @@ from ReminderTime import ReminderTime
 class Reminder:
     def __init__(self, user_id: int, channel_id: int, time: str, name: str, description: str | None,
                  rem_type: Literal['Daily','Date'], timezone: Timezone, link: str = None, file: bytes | None = None,
-                 file_name: str = None, private: bool = False):
+                 file_name: str = None, private: bool = False, mention_role: int | None = None):
 
         self._user_id = user_id
         self._channel_id = channel_id
@@ -21,6 +21,7 @@ class Reminder:
         self._timezone = timezone
         self._file_name = file_name
         self._link = link
+        self._mention_role = mention_role
 
         self._time = ReminderTime(time, self._timezone, self._rem_type)
 
@@ -67,3 +68,7 @@ class Reminder:
     @property
     def private(self) -> bool:
         return self._private
+
+    @property
+    def mention_role(self) -> int | None:
+        return self._mention_role

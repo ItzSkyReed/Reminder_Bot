@@ -1,9 +1,7 @@
 import asyncio
 import io
-from datetime import datetime
 
 import discord
-import pendulum
 
 import Database
 import constants
@@ -63,6 +61,7 @@ class Dispatcher:
 
         embed.timestamp = calculate_timestamp_for_discord_footer(reminder.timestamp, reminder_type=reminder.type)
 
+        mention = f"<@{reminder.user_id}>" if not reminder.mention_role else f"<@&{reminder.mention_role}>"
+        content = mention if not isinstance(recipient, discord.DMChannel) else None
 
-        content = f"<@{reminder.user_id}>" if not isinstance(recipient, discord.DMChannel) else None
         return await recipient.send(content=content, embed=embed, file=file, view=view)

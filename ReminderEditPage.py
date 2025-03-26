@@ -3,11 +3,12 @@ from typing import Literal
 
 import discord
 from discord import Embed
-from discord.ui import Modal, InputText, View
+from discord.ui import Modal, InputText, View, Select
 from pendulum import Timezone
 
 import Database
 from ReminderTime import ReminderTime, TimeInPastException, ExcessiveFutureTimeException, InvalidReminderTypeException, InvalidTimeFormatException
+from common import can_user_tag_role
 from constants import FILE_ICON, EMBED_IMAGE_TYPES, ERROR_MESSAGE_COLOR, UTC_ZONES, INFO_MESSAGE_COLOR, SUCCESS_MESSAGE_COLOR
 
 
@@ -39,6 +40,12 @@ class ReminderEditEmbed(Embed):
         self.add_field(name="🔒 Privacy", value='`Private`' if reminder.private else '`Public`')
         date = f"<t:{reminder.timestamp}:f>" if reminder.type == "Date" else f"<t:{reminder.timestamp}:t>"
         self.add_field(name="📅 Date", value=date)
+
+        if reminder.mention_role:
+            self.add_field(name="🔰 Mention Role", value=f"<@&{reminder.mention_role}>")
+
+        self.add_field(name="📋 Channel", value=f"<#{reminder.channel_id}>")
+
 
         if reminder.link:
             link = reminder.link if len(reminder.link) < 30 else reminder.link.split("https://", maxsplit=1)[-1][:27] + "..."
@@ -72,6 +79,30 @@ class EditNameModal(Modal):
 
         return await interaction.response.edit_message(embed=new_embed)
 
+class EditMentionRoleSelect(Select):
+    def __init__(self, reminder: Database.RemindersDB):
+        super().__init__(select_type=discord.ComponentType.role_select)
+        self.reminder = reminder
+
+    async def callback(self, interaction: discord.Interaction):
+
+        selected_role: discord.Role | None = self.values[0] if self.values else None
+
+        if not selected_role:
+            return await interaction.response.send_message(embed=EditErrorEmbed(message="No role selected."), ephemeral=True)
+
+        if selected_role.id == self.reminder.mention_role:
+            return await interaction.response.send_message(embed=EditErrorEmbed(message="The selected role is the same as the previous one."), ephemeral=True)
+
+        if not can_user_tag_role(selected_role.mentionable, interaction.user.guild_permissions):
+            return await interaction.response.send_message(embed=EditErrorEmbed(message="The new name is the same as the previous one"), ephemeral=True)
+
+        self.reminder.mention_role = selected_role.id
+        await self.reminder.save()
+
+        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
+
+        return await interaction.response.edit_message(embed=new_embed)
 
 class EditDescriptionModal(Modal):
     def __init__(self, reminder: Database.RemindersDB):
@@ -160,9 +191,19 @@ class ReminderEditView(View):
         if not self.reminder.file_name:
             self.remove_item(self.get_remove_file_button())
 
+        if self.reminder.private:
+            self.remove_item(self.get_remove_mention_button())
+
+
     def get_remove_file_button(self):
         for child in self.children:
             if isinstance(child, discord.ui.Button) and child.label == "Remove File":
+                return child
+        return None
+
+    def get_remove_mention_button(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button) and child.label == "Edit Mention Role":
                 return child
         return None
 
@@ -201,6 +242,12 @@ class ReminderEditView(View):
         embed = Embed(title="Success", description=f"Reminder \"{name}\" has been deleted.", color=SUCCESS_MESSAGE_COLOR)
         await interaction.response.edit_message(embed=embed, view=None)
 
+    @discord.ui.button(label="Edit Mention Role", style=discord.ButtonStyle.primary, emoji="🔰", row=2)
+    async def edit_mention_role_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        select = EditMentionRoleSelect(reminder=self.reminder)
+        self.remove_item(self.get_remove_mention_button())
+        self.add_item(select)
+        await interaction.response.edit_message(view=self)
 
 class ReminderListView(View):
     _num_emojis = {1: "1️⃣", 2: "2️⃣", 3: "3️⃣", 4: "4️⃣", 5: "5️⃣"}

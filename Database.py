@@ -99,6 +99,7 @@ class RemindersDB(Base):
     file_name = Column(String)
     private = Column(Boolean, nullable=False, default=False)
     link = Column(String)
+    mention_role = Column(Integer)
 
     user = relationship("UserDB", backref="reminders")
 
@@ -137,7 +138,8 @@ class RemindersDB(Base):
             file=reminder.file,
             file_name=reminder.file_name,
             private=reminder.private,
-            link=reminder.link
+            link=reminder.link,
+            mention_role=reminder.mention_role
         )
         await session.execute(insert_stmt)
         await session.commit()
@@ -200,7 +202,7 @@ class RemindersDB(Base):
         result = await session.execute(
             select(
                 cls.id, cls.user_id, cls.name, cls.channel_id, cls.timestamp,
-                cls.type, cls.description, cls.file_name, cls.private, cls.link
+                cls.type, cls.description, cls.file_name, cls.private, cls.link, cls.mention_role
             ).where(cls.user_id == discord_id)
         )
 
@@ -218,7 +220,8 @@ class RemindersDB(Base):
                     file_name=row.file_name,
                     private=row.private,
                     link=row.link,
-                    file=None  # Исключаем file
+                    mention_role=row.mention_role,
+                    file=None
                 )
             )
         return reminders
