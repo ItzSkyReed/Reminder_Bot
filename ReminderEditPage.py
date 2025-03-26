@@ -101,7 +101,6 @@ class EditMentionRoleSelect(Select):
         await self.reminder.save()
 
         new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
-
         return await interaction.response.edit_message(embed=new_embed)
 
 class EditDescriptionModal(Modal):
@@ -207,26 +206,31 @@ class ReminderEditView(View):
                 return child
         return None
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Name", style=discord.ButtonStyle.primary, emoji="✏️", row=0)
     async def edit_name_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         modal = EditNameModal(reminder=self.reminder)
         await interaction.response.send_modal(modal=modal)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Description", style=discord.ButtonStyle.primary, emoji="📝", row=0)
     async def edit_desc_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         modal = EditDescriptionModal(reminder=self.reminder)
         await interaction.response.send_modal(modal=modal)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Link", style=discord.ButtonStyle.primary, emoji="🔗", row=0)
     async def edit_link_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         modal = EditLinkModal(reminder=self.reminder)
         await interaction.response.send_modal(modal=modal)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Time", style=discord.ButtonStyle.green, emoji="📅", row=1)
     async def edit_time_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         modal = EditTimeModal(reminder=self.reminder)
         await interaction.response.send_modal(modal=modal)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Remove File", style=discord.ButtonStyle.danger, emoji="🔥", row=1)
     async def remove_file_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         await self.reminder.remove_file()
@@ -235,6 +239,7 @@ class ReminderEditView(View):
 
         return await interaction.response.edit_message(attachments=[], view=self)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
     async def delete_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         name = self.reminder.name
@@ -242,6 +247,7 @@ class ReminderEditView(View):
         embed = Embed(title="Success", description=f"Reminder \"{name}\" has been deleted.", color=SUCCESS_MESSAGE_COLOR)
         await interaction.response.edit_message(embed=embed, view=None)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Mention Role", style=discord.ButtonStyle.primary, emoji="🔰", row=2)
     async def edit_mention_role_button(self, button: discord.ui.Button, interaction: discord.Interaction):
         select = EditMentionRoleSelect(reminder=self.reminder)
@@ -260,7 +266,6 @@ class ReminderListView(View):
         self.total_pages = max(1, (len(self.embeds) + self.per_page - 1) // self.per_page)
         self.embed_buttons = []
 
-        # Создаем embed-кнопки динамически
         for i in range(5):
             button = discord.ui.Button(
                 emoji=self._num_emojis[i + 1],
@@ -313,31 +318,35 @@ class ReminderListView(View):
 
     async def update_message(self, interaction: discord.Interaction):
         start_idx = self.page * self.per_page
-        embeds = self.embeds[start_idx:start_idx + self.per_page]  # Берем 5 эмбедов)
+        embeds = self.embeds[start_idx:start_idx + self.per_page]
         self.update_buttons()
 
-        # Обновляем сообщение с эмбедами и view
         await interaction.response.edit_message(embeds=embeds, view=self)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="<<", style=discord.ButtonStyle.blurple)
     async def first_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.page = 0
         await self.update_message(interaction)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="<", style=discord.ButtonStyle.danger)
     async def prev_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.page = max(0, self.page - 1)
         await self.update_message(interaction)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="1/1", style=discord.ButtonStyle.gray, disabled=True)
     async def page_indicator(self, interaction: discord.Interaction, button: discord.ui.Button):
         pass
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label=">", style=discord.ButtonStyle.green)
     async def next_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.page = min(self.total_pages - 1, self.page + 1)
         await self.update_message(interaction)
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label=">>", style=discord.ButtonStyle.blurple)
     async def last_page(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.page = self.total_pages - 1
