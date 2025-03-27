@@ -8,9 +8,8 @@ from pendulum import Timezone
 
 import Database
 import constants
-from Reminder import Reminder
 from ReminderEditPage import ReminderEditEmbed, ReminderListView
-from ReminderTime import TimeInPastException, ExcessiveFutureTimeException, InvalidReminderTypeException, InvalidTimeFormatException
+from ReminderTime import TimeInPastException, ExcessiveFutureTimeException, InvalidReminderTypeException, InvalidTimeFormatException, ReminderTime
 from common import can_user_tag_role
 from constants import UTC_ZONES, MAX_FILE_SIZE, SUCCESS_MESSAGE_COLOR
 
@@ -135,9 +134,7 @@ class ReminderCog(commands.Cog):
         timezone = Timezone(UTC_ZONES[utc_zone])
 
         try:
-            reminder = Reminder(user_id=ctx.user.id, channel_id=ctx.channel_id, name=name, time=time, description=description,
-                                timezone=timezone, rem_type=rem_type, file=file_data, file_name=file_name, private=is_private,
-                                link=link, mention_role=mention_role.id if mention_role else None)
+            reminder_time = ReminderTime(unformatted_time=time, timezone=timezone, rem_type=rem_type)
 
         except TimeInPastException:
             return await self._send_error(ctx, "The specified time is in the past", True)
@@ -151,18 +148,17 @@ class ReminderCog(commands.Cog):
         except InvalidTimeFormatException:
             return await self._send_error(ctx, "The specified time format cannot be parsed", True)
 
-        await Database.RemindersDB.add_reminder(reminder)
+        await Database.RemindersDB.add_reminder(user_id=ctx.user.id, time=reminder_time, name=name, description=description,
+                                                rem_type=rem_type, link=link, file=file_data, file_name=file_name, private=is_private,
+                                                mention_role=mention_role.id if mention_role else None, channel_id=ctx.channel.id)
 
-        embed = discord.Embed(
-            title=f"Reminder \"{name}\" created!",
-            color=SUCCESS_MESSAGE_COLOR
-        )
+        embed = discord.Embed(title=f"Reminder \"{name}\" created!", color=SUCCESS_MESSAGE_COLOR)
 
         if rem_type == "Date":
-            description = f"Triggers at <t:{int(reminder.rem_time.time.timestamp())}:t>; Current timezone: {utc_zone.upper()}"
+            description = f"Triggers at <t:{int(reminder_time.bd_timestamp)}:t>; Current timezone: {utc_zone.upper()}"
             footer = "This is a one-time reminder"
         else:
-            description = f"Will trigger <t:{int(reminder.rem_time.time.timestamp())}:R>"
+            description = f"Will trigger <t:{int(reminder_time.time.timestamp())}:R>"
             footer = "This is a daily reminder"
 
         embed.add_field(name="", value=description, inline=False)

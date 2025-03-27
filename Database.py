@@ -1,12 +1,12 @@
 import asyncio
-from typing import Self, Sequence
+from typing import Self, Sequence, Literal
 
 import pendulum
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy import Column, Integer, String, ForeignKey, BLOB, select, Index, insert, update, Boolean, delete, func, and_
 
-from Reminder import Reminder
+from ReminderTime import ReminderTime
 from constants import UTC_ZONES, DISPATCHER_PERIOD, DATABASE_NAME
 
 DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_NAME}"
@@ -26,6 +26,7 @@ def connection(method):
                 raise e
             finally:
                 await session.close()
+
     return wrapper
 
 
@@ -126,41 +127,60 @@ class RemindersDB(Base):
 
     @classmethod
     @connection
-    async def add_reminder(cls, reminder: Reminder, session: AsyncSession):
-        user_subquery = select(UserDB.discord_id).where(UserDB.discord_id == reminder.user_id).scalar_subquery()
+    async def add_reminder(cls, user_id: int, channel_id: int, time: ReminderTime, name: str, description: str | None,
+                           rem_type: Literal['Daily', 'Date'], link: str, file: bytes | None,
+                           file_name: str, private: bool, mention_role: int | None, session: AsyncSession):
+        """
+        Adds a new reminder to the database.
+
+        Args:
+            user_id (int): The ID of the user creating the reminder.
+            channel_id (int): The ID of the channel where the reminder will be sent.
+            time (ReminderTime): The time at which the reminder will trigger.
+            name (str): The name of the reminder.
+            description (str | None): The description of the reminder.
+            rem_type (Literal['Daily', 'Date']): The type of the reminder, either 'Daily' or 'Date'.
+            link (str): A link associated with the reminder.
+            file (bytes | None): An optional file to be sent with the reminder.
+            file_name (str): The name of the file to be sent.
+            private (bool): Whether the reminder is private.
+            mention_role (int | None): The role to mention when the reminder is sent.
+            session (AsyncSession): The database session to use for the operation.
+
+        Returns:
+            None
+        """
+        user_subquery = select(UserDB.discord_id).where(UserDB.discord_id == user_id).scalar_subquery()
         insert_stmt = insert(cls).values(
             user_id=user_subquery,
-            name=reminder.name,
-            channel_id=reminder.channel_id,
-            timestamp=reminder.rem_time.bd_timestamp,
-            type=reminder.rem_type,
-            description=reminder.description,
-            file=reminder.file,
-            file_name=reminder.file_name,
-            private=reminder.private,
-            link=reminder.link,
-            mention_role=reminder.mention_role
+            name=name,
+            channel_id=channel_id,
+            timestamp=time.bd_timestamp,
+            type=rem_type,
+            description=description,
+            file=file,
+            file_name=file_name,
+            private=private,
+            link=link,
+            mention_role=mention_role
         )
         await session.execute(insert_stmt)
         await session.commit()
-
 
     @classmethod
     @connection
     async def get_due_and_delete_date(cls, session: AsyncSession) -> Sequence[Self]:
         current_timestamp = int(pendulum.now("UTC").timestamp())
 
-        reminders_query = select(cls).where(cls.timestamp <= current_timestamp, cls.type == "Date")
-        result = await session.execute(reminders_query)
-        reminders_to_send = result.scalars().all()
+        delete_query = (
+            delete(cls)
+            .where(cls.timestamp <= current_timestamp, cls.type == "Date")
+            .returning(cls)
+        )
+        result = await session.execute(delete_query)
+        await session.commit()
 
-        if reminders_to_send:
-            # Delete the selected reminders
-            delete_query = delete(cls).where(cls.timestamp <= current_timestamp, cls.type == "Date")
-            await session.execute(delete_query)
-            await session.commit()
-
-        return reminders_to_send
+        return result.scalars().all()
 
     @classmethod
     @connection
@@ -226,10 +246,12 @@ class RemindersDB(Base):
             )
         return reminders
 
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Insert time zones if they are not yet in the database
         await TimezoneDB.insert_timezones()
+
 
 asyncio.run(init_db())

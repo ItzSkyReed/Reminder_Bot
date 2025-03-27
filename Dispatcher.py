@@ -31,20 +31,18 @@ class Dispatcher:
 
     @classmethod
     async def send_reminder_message(cls, reminder: Database.RemindersDB):
-        embed = (discord.Embed(
+        embed = discord.Embed(
             title=f'Reminder: "{reminder.name}"',
             color=REMINDER_MESSAGE_COLOR,
             description=reminder.description
-        ))
-        embed.set_footer(
+        ).set_footer(
             text="This is a daily reminder" if reminder.type == "Daily" else "This is a one-time reminder",
-            icon_url=constants.CLOCK_ICON)
+            icon_url=constants.CLOCK_ICON
+        )
 
-        file = None
-        if reminder.file:
-            file = discord.File(io.BytesIO(reminder.file), filename=reminder.file_name)
-            if reminder.file_name.split(".")[-1].lower() in EMBED_IMAGE_TYPES:
-                embed.set_image(url=f"attachment://{reminder.file_name}")
+        file = discord.File(io.BytesIO(reminder.file), filename=reminder.file_name) if reminder.file else None
+        if file and reminder.file_name.split(".")[-1].lower() in EMBED_IMAGE_TYPES:
+            embed.set_image(url=f"attachment://{reminder.file_name}")
 
         if reminder.private:
             recipient = await cls.bot.get_or_fetch_user(reminder.user_id)
