@@ -138,7 +138,6 @@ class ReminderCog(commands.Cog):
             reminder = Reminder(user_id=ctx.user.id, channel_id=ctx.channel_id, name=name, time=time, description=description,
                                 timezone=timezone, rem_type=rem_type, file=file_data, file_name=file_name, private=is_private,
                                 link=link, mention_role=mention_role.id if mention_role else None)
-            print(reminder.mention_role)
 
         except TimeInPastException:
             return await self._send_error(ctx, "The specified time is in the past", True)
@@ -183,7 +182,7 @@ class ReminderCog(commands.Cog):
 
         reminder_embeds = []
         for reminder in reminders:
-            embed = ReminderEditEmbed(reminder=reminder, embed_type="short")
+            embed = ReminderEditEmbed(reminder=reminder, embed_type="short", roles=ctx.guild.roles if ctx.guild else None)
 
             reminder_embeds.append(embed)
         view = ReminderListView(reminder_embeds=reminder_embeds)

@@ -21,7 +21,7 @@ class EditErrorEmbed(Embed):
 
 
 class ReminderEditEmbed(Embed):
-    def __init__(self, reminder: Database.RemindersDB, embed_type: Literal["short", "full"], **kwargs):
+    def __init__(self, reminder: Database.RemindersDB, embed_type: Literal["short", "full"], roles: list[discord.Role], **kwargs):
         super().__init__(**kwargs)
         self._reminder_id = reminder.id
         self.title = f"Reminder: {reminder.name}"
@@ -39,10 +39,17 @@ class ReminderEditEmbed(Embed):
         self.add_field(name="🔖 Type", value=f"`{reminder.type}`")
         self.add_field(name="🔒 Privacy", value='`Private`' if reminder.private else '`Public`')
         date = f"<t:{reminder.timestamp}:f>" if reminder.type == "Date" else f"<t:{reminder.timestamp}:t>"
-        self.add_field(name="📅 Date", value=date)
+        self.add_field(name=f"📅 Date" if reminder.type == "Date" else f"🕓 Time: {date}", value=date)
 
         if reminder.mention_role:
-            self.add_field(name="🔰 Mention Role", value=f"<@&{reminder.mention_role}>")
+
+            if not roles or reminder.mention_role not in {role.id for role in roles}:
+                role_msg =  "`Role not found`"
+                self.set_footer(text="The role is likely on another server. You can change it on the server where you created the reminder.")
+            else:
+                role_msg = f"<@&{reminder.mention_role}>"
+
+            self.add_field(name="🔰 Mention Role", value=role_msg)
 
         self.add_field(name="📋 Channel", value=f"<#{reminder.channel_id}>")
 
@@ -75,7 +82,7 @@ class EditNameModal(Modal):
 
         self.reminder.name = self.children[0].value
         await self.reminder.save()
-        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
+        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full", roles=interaction.guild.roles if interaction.guild else None)
 
         return await interaction.response.edit_message(embed=new_embed)
 
@@ -100,7 +107,7 @@ class EditMentionRoleSelect(Select):
         self.reminder.mention_role = selected_role.id
         await self.reminder.save()
 
-        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
+        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full", roles=interaction.guild.roles if interaction.guild else None)
         return await interaction.response.edit_message(embed=new_embed)
 
 class EditDescriptionModal(Modal):
@@ -115,7 +122,7 @@ class EditDescriptionModal(Modal):
 
         self.reminder.description = self.children[0].value
         await self.reminder.save()
-        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
+        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full", roles=interaction.guild.roles if interaction.guild else None)
 
         return await interaction.response.edit_message(embed=new_embed)
 
@@ -134,7 +141,7 @@ class EditLinkModal(Modal):
 
         self.reminder.link = self.children[0].value
         await self.reminder.save()
-        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
+        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full", roles=interaction.guild.roles if interaction.guild else None)
 
         return await interaction.response.edit_message(embed=new_embed)
 
@@ -177,20 +184,20 @@ class EditTimeModal(Modal):
         self.reminder.timestamp = time.bd_timestamp
         self.reminder.type = new_type
         await self.reminder.save()
-        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full")
+        new_embed = ReminderEditEmbed(reminder=self.reminder, embed_type="full", roles=interaction.guild.roles if interaction.guild else None)
 
         return await interaction.response.edit_message(content="### Choose Field to Edit", embed=new_embed)
 
 
 class ReminderEditView(View):
-    def __init__(self, reminder: Database.RemindersDB):
+    def __init__(self, reminder: Database.RemindersDB, roles: list[discord.Role] | None):
         super().__init__(disable_on_timeout=True)
         self.reminder = reminder
 
         if not self.reminder.file_name:
             self.remove_item(self.get_remove_file_button())
 
-        if self.reminder.private:
+        if self.reminder.private or not roles or (self.reminder.mention_role and self.reminder.mention_role not in {role.id for role in roles}):
             self.remove_item(self.get_remove_mention_button())
 
 
@@ -209,26 +216,22 @@ class ReminderEditView(View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Name", style=discord.ButtonStyle.primary, emoji="✏️", row=0)
     async def edit_name_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        modal = EditNameModal(reminder=self.reminder)
-        await interaction.response.send_modal(modal=modal)
+        await interaction.response.send_modal(modal=EditNameModal(reminder=self.reminder))
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Description", style=discord.ButtonStyle.primary, emoji="📝", row=0)
     async def edit_desc_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        modal = EditDescriptionModal(reminder=self.reminder)
-        await interaction.response.send_modal(modal=modal)
+        await interaction.response.send_modal(modal=EditDescriptionModal(reminder=self.reminder))
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Link", style=discord.ButtonStyle.primary, emoji="🔗", row=0)
     async def edit_link_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        modal = EditLinkModal(reminder=self.reminder)
-        await interaction.response.send_modal(modal=modal)
+        await interaction.response.send_modal(modal=EditLinkModal(reminder=self.reminder))
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Time", style=discord.ButtonStyle.green, emoji="📅", row=1)
     async def edit_time_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        modal = EditTimeModal(reminder=self.reminder)
-        await interaction.response.send_modal(modal=modal)
+        await interaction.response.send_modal(modal=EditTimeModal(reminder=self.reminder))
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Remove File", style=discord.ButtonStyle.danger, emoji="🔥", row=1)
@@ -242,17 +245,15 @@ class ReminderEditView(View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
     async def delete_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        name = self.reminder.name
+        embed = Embed(title="Success", description=f"Reminder \"{self.reminder.name}\" has been deleted.", color=SUCCESS_MESSAGE_COLOR)
         await self.reminder.delete()
-        embed = Embed(title="Success", description=f"Reminder \"{name}\" has been deleted.", color=SUCCESS_MESSAGE_COLOR)
         await interaction.response.edit_message(embed=embed, view=None)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Edit Mention Role", style=discord.ButtonStyle.primary, emoji="🔰", row=2)
     async def edit_mention_role_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        select = EditMentionRoleSelect(reminder=self.reminder)
         self.remove_item(self.get_remove_mention_button())
-        self.add_item(select)
+        self.add_item(EditMentionRoleSelect(reminder=self.reminder))
         await interaction.response.edit_message(view=self)
 
 class ReminderListView(View):
@@ -289,8 +290,8 @@ class ReminderListView(View):
         await interaction.response.defer()
 
         reminder = await Database.RemindersDB.get_reminder_by_id(reminder_id)
-        view = ReminderEditView(reminder)
-        embed = ReminderEditEmbed(reminder=reminder, embed_type="full")
+        view = ReminderEditView(reminder, interaction.guild.roles if interaction.guild else None)
+        embed = ReminderEditEmbed(reminder=reminder, embed_type="full", roles=interaction.guild.roles if interaction.guild else None)
 
         if reminder.file_name:
             file = discord.File(io.BytesIO(reminder.file), filename=reminder.file_name)
