@@ -39,7 +39,7 @@ class ReminderEditEmbed(Embed):
         self.add_field(name="🔖 Type", value=f"`{reminder.type}`")
         self.add_field(name="🔒 Privacy", value='`Private`' if reminder.private else '`Public`')
         date = f"<t:{reminder.timestamp}:f>" if reminder.type == "Date" else f"<t:{reminder.timestamp}:t>"
-        self.add_field(name=f"📅 Date" if reminder.type == "Date" else f"🕓 Time: {date}", value=date)
+        self.add_field(name=f"📅 Date" if reminder.type == "Date" else f"🕓 Time", value=date)
 
         if reminder.mention_role:
 
